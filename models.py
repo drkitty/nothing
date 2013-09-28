@@ -1,4 +1,4 @@
-from framework import Field, Model, build_model
+from framework import Field, Model
 
 class StrippedCharField(Field):
     def __init__(self):
@@ -9,6 +9,4 @@ class StrippedCharField(Field):
 
 
 class Thing(Model):
-    __metaclass__ = build_model
-
     foo = StrippedCharField()

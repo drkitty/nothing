@@ -1,12 +1,14 @@
+from types import FunctionType
+
 class Field(object):
     def __new__(cls, *args, **kwargs):
         @staticmethod
-        def new():
+        def _create_field():
             obj = super(Field, cls).__new__(cls)
             obj.__init__(*args, **kwargs)
             return obj
 
-        return new
+        return _create_field
 
     def __init__(self):
         self.value = None
@@ -24,48 +26,29 @@ class Field(object):
         return unicode(self.value)
 
 
-def build_model(name, bases, attrs):
-    model = type(name, bases, {})
-    model._fields = type('_fields', (object,), {})
-
-    fieldnames = set()
-    for attrname, value in attrs.iteritems():
-        print 'Handling {0}: {1}'.format(attrname, value)
-        if isinstance(value, staticmethod):
-            print 'Adding {0} to model._fields'.format(attrname)
-            setattr(model._fields, attrname, value)
-            fieldnames.add(attrname)
-        else:
-            print 'Adding {0} to model'.format(attrname)
-            setattr(model, attrname, value)
-    model._fields._names = fieldnames
-
-    def ga(self, name):
-        if hasattr(self._fields, name):
-            return getattr(self._fields, name).value
-        else:
-            raise AttributeError()
-
-    def sa(self, name, value):
-        if hasattr(self._fields, name):
-            field = getattr(self._fields, name)
-            field.value = field.clean(value)
-        else:
-            raise AttributeError()
-
-    model.__getattr__ = ga
-    model.__setattr__ = sa
-
-    return model
-
-
 class Model(object):
     def __init__(self, pk=None, **field_values):
         #if pk is not None:
             #field_values = self.objects.get(pk=pk)
         for fieldname, value in field_values.iteritems():
-            getattr(self._fields, fieldname).value = value
+            getattr(self, fieldname).value = value
 
-        for fieldname in self._fields._names:
-            setattr(self._fields, fieldname,
-                    getattr(self._fields, fieldname)())
+        for name in dir(self):
+            attr = getattr(self, name)
+            if (isinstance(attr, FunctionType) and
+                    attr.__name__ == '_create_field'):
+                setattr(self, name, attr())
+
+    def __getattribute__(self, name):
+        attr = super(Model, self).__getattribute__(name)
+        if isinstance(attr, Field):
+            return attr.value
+        else:
+            return attr
+
+    def __setattr__(self, name, value):
+        attr = super(Model, self).__getattribute__(name)
+        if isinstance(attr, Field):
+            super(Model, self).__setattr__(name, attr.clean(value))
+        else:
+            super(Model, self).__setattr__(name, value)
