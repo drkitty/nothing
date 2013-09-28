@@ -37,6 +37,8 @@ class Model(object):
             attr = getattr(self, name)
             if (isinstance(attr, FunctionType) and
                     attr.__name__ == '_create_field'):
+                # Why is it a function now, when it used to be a staticmethod?
+                # No idea. I don't understand staticmethod.
                 setattr(self, name, attr())
 
     def __getattribute__(self, name):
