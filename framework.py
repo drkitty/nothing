@@ -51,6 +51,6 @@ class Model(object):
     def __setattr__(self, name, value):
         attr = super(Model, self).__getattribute__(name)
         if isinstance(attr, Field):
-            super(Model, self).__setattr__(name, attr.clean(value))
+            attr.value = attr.clean(value)
         else:
             super(Model, self).__setattr__(name, value)
