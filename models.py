@@ -1,12 +1,14 @@
-from framework import Field, Model
+from framework import Model
 
-class StrippedCharField(Field):
-    def __init__(self):
-        self.value = u''
-
-    def clean(self, value):
-        return unicode(value.strip())
+from fields import VARCHAR, IPAddress
 
 
-class Thing(Model):
-    foo = StrippedCharField()
+class Human(Model):
+    _table_name = u'human'
+
+    name = VARCHAR(10)
+
+
+class Interface(Model):
+    name = VARCHAR(255)
+    ip = IPAddress(ip_type=4)
