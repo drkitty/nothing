@@ -8,11 +8,17 @@ class Database(object):
 class MySQLDatabase(Database):
     db_type = u'mysql'
 
-    def __init__(self, host, user, passwd, db):
+    def __init__(self, host, user, passwd, db, models=()):
         import oursql
         self.connection = oursql.Connection(host, user, passwd, db=db)
         self.cursor = self.connection.cursor()
         self.execute = self.cursor.execute
+
+        self.models = set()
+        self.models.update(models)
+
+    def execute_lots(self, stmts):
+        map(self.execute, stmts)
 
     def __enter__(self):
         return self
@@ -23,21 +29,37 @@ class MySQLDatabase(Database):
     def close(self):
         self.connection.close()
 
+    def create_tables(self):
+        stmts = []
+
+        for model in self.models:
+            stmts.append(model._create_table(self))
+
+        return stmts
+
+    def drop_tables(self):
+        stmts = []
+
+        for model in self.models:
+            stmts.append(model._drop_table(self))
+
+        return stmts
+
     def _create_table(self, table_name, columns):
-        sql = (u'CREATE TABLE %s\n'
+        sql = (u'CREATE TABLE `%s`\n'
                u'(\n'
                % table_name)
-
         for i in xrange(len(columns)):
-            sql += u'%s %s' % (columns[i][0], columns[i][1])
+            sql += u'`%s` %s' % (columns[i][0], columns[i][1])
             if i != len(columns) - 1:
                 sql += u',\n'
             else:
                 sql += u'\n'
-
         sql += u');\n'
-
         return sql
+
+    def _drop_table(self, table_name):
+        return u'DROP TABLE `%s`;\n' % table_name
 
 class Field(object):
     """The base field class
@@ -145,18 +167,21 @@ class Model(object):
             super(Model, self).__setattr__(name, value)
 
     @classmethod
+    def _get_table_name(cls):
+        try: # can't use hasattr because we defined __getattribute__
+            return cls._table_name
+        except AttributeError:
+            return cls.__name__.lower()
+
+    @classmethod
     def _create_table(cls, db):
         columns = []
         fields = cls._get_fields()
         for field in fields.itervalues():
             columns += field.create_columns(db)
 
-        try: # can't use hasattr because we defined __getattribute__
-            table_name = cls._table_name
-        except AttributeError:
-            table_name = cls.__name__.lower()
+        return db._create_table(cls._get_table_name(), columns)
 
-        return db._create_table(table_name, columns)
-
-    def _drop_table(self, db):
-        return db.drop_table(table_name)
+    @classmethod
+    def _drop_table(cls, db):
+        return db._drop_table(cls._get_table_name())
