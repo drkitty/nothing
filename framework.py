@@ -12,8 +12,18 @@ class MySQLDatabase(Database):
         import oursql
         self.connection = oursql.Connection(host, user, passwd, db=db)
         self.cursor = self.connection.cursor()
+        self.execute = self.cursor.execute
 
-    def create_table(self, table_name, columns):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def close(self):
+        self.connection.close()
+
+    def _create_table(self, table_name, columns):
         sql = (u'CREATE TABLE %s\n'
                u'(\n'
                % table_name)
@@ -30,6 +40,10 @@ class MySQLDatabase(Database):
         return sql
 
 class Field(object):
+    """The base field class
+    Fields are like columns except when they're like groups of columns.
+    """
+
     def __new__(cls, *args, **kwargs):
         @staticmethod
         def _create_field(column_name):
@@ -60,7 +74,7 @@ class Field(object):
         return unicode(self.value)
 
     def create_columns(self, db):
-        column_info = self._column_info[db.db_type]
+        column_info = self.column_info[db.db_type]
         if isinstance(column_info, tuple):
             columns = []
             for (column_suffix, column_type) in column_info:
@@ -72,17 +86,39 @@ class Field(object):
 
         return columns
 
-    _column_info = ()
+    column_info = ()
 
 
 class Model(object):
-    def __init__(self, pk=None, **field_values):
-        super(Model, self).__setattr__(u'_fields', [])
+    """The base model class
+    Models are like tables.
 
+    Note: Attributes that are not Field instances should begin with an
+    underscore (because of reasons).
+    """
+
+    @classmethod
+    def _get_fields(cls):
+        fields = {}
+
+        for attrname in dir(cls):
+            attr = getattr(cls, attrname)
+            if (isinstance(attr, FunctionType) and
+                    attr.__name__ == '_create_field'):
+                # Why is it a function now, when it used to be a staticmethod?
+                # Something to do with class instantiation.
+                fields[attrname] = attr(attrname)
+
+        return fields
+
+    def __init__(self):
+        super(Model, self).__setattr__('_fields', {})
+
+        # ^^ def __init__(..., pk=None, ...):
         #if pk is not None:
-            #field_values = self.objects.get(pk=pk)
-        for fieldname, value in field_values.iteritems():
-            getattr(self, fieldname).value = value
+            #db_values = self.objects.get(pk=pk)
+            #for fieldname, value in db_values.iteritems():
+                #getattr(self, fieldname).value = value
 
         for attrname in dir(self):
             attr = getattr(self, attrname)
@@ -90,43 +126,37 @@ class Model(object):
                     attr.__name__ == '_create_field'):
                 # Why is it a function now, when it used to be a staticmethod?
                 # Something to do with class instantiation.
-                setattr(self, attrname, attr(attrname))
-                self._fields.append(attrname)
-
-        self._fields = tuple(self._fields)
+                attr = attr(attrname)
+                setattr(self, attrname, attr)
+                self._fields[attrname] = attr
 
     def __getattribute__(self, name):
         attr = super(Model, self).__getattribute__(name)
-        if isinstance(attr, Field):
-            return attr.value
-        else:
+        if name == '_fields' or name not in self._fields.iterkeys():
             return attr
+        else:
+            return attr.value
 
     def __setattr__(self, name, value):
-        try:
-            attr = super(Model, self).__getattribute__(name)
-        except AttributeError:
-            super(Model, self).__setattr__(name, value)
-            return
-
-        if isinstance(attr, Field):
+        if name in self._fields:
+            attr= super(Model, self).__getattribute__(name)
             attr.value = attr.clean(value)
         else:
             super(Model, self).__setattr__(name, value)
 
-    def _create_table(self, db):
+    @classmethod
+    def _create_table(cls, db):
         columns = []
-        for fieldname in self._fields:
-            field = super(Model, self).__getattribute__(fieldname)
+        fields = cls._get_fields()
+        for field in fields.itervalues():
             columns += field.create_columns(db)
 
-
         try: # can't use hasattr because we defined __getattribute__
-            table_name = self._table_name
+            table_name = cls._table_name
         except AttributeError:
-            table_name = self.__class__.__name__.lower()
+            table_name = cls.__name__.lower()
 
-        return db.create_table(table_name, columns)
+        return db._create_table(table_name, columns)
 
     def _drop_table(self, db):
         return db.drop_table(table_name)

@@ -16,22 +16,22 @@ class _int_base(Field):
 
 class TINYINT(_int_base):
     bits = 8
-    _column_info = {u'mysql': u'TINYINT'}
+    column_info = {u'mysql': u'TINYINT'}
 
 
 class SMALLINT(_int_base):
     bits = 16
-    _column_info = {u'mysql': u'SMALLINT'}
+    column_info = {u'mysql': u'SMALLINT'}
 
 
 class INT(_int_base):
     bits = 32
-    _column_info = {u'mysql': u'INT'}
+    column_info = {u'mysql': u'INT'}
 
 
 class BIGINT(_int_base):
     bits = 64
-    _column_info = {u'mysql': u'BITINT'}
+    column_info = {u'mysql': u'BITINT'}
 
 
 class VARCHAR(Field):
@@ -42,17 +42,17 @@ class VARCHAR(Field):
 
     def clean(self, value):
         if not isinstance(value, basestring):
-            raise ValueError(self._column_info + u' value must be a string')
-
+            raise ValueError(u'Invalid VARCHAR value')
         value = unicode(value) # if str, assume ASCII
 
         if len(value) > self.max_length:
-            raise ValueError(self._column_info + u' value too long')
+            raise ValueError(u'VARCHAR value longer than maximum length (%s)'
+                             % self.max_length)
 
         return value
 
     @property
-    def _column_info(self):
+    def column_info(self):
         return {u'mysql': u'VARCHAR(%s)' % self.max_length}
 
 
@@ -87,7 +87,7 @@ class IPAddress(Field):
     def from_db(self, db, columns):
         return self.clean((columns[u'upper'] << 64) | columns[u'lower'])
 
-    _column_info = {
+    column_info = {
         u'mysql': (
             (u'upper', u'BIGINT UNSIGNED'),
             (u'lower', u'BIGINT UNSIGNED')
