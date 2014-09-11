@@ -6,7 +6,7 @@ class Database(object):
 
 
 class MySQLDatabase(Database):
-    db_type = u'mysql'
+    db_type = 'mysql'
 
     def __init__(self, host, user, passwd, db, models=()):
         import oursql
@@ -18,7 +18,7 @@ class MySQLDatabase(Database):
         self.models.update(models)
 
     def execute_lots(self, stmts):
-        map(self.execute, stmts)
+        list(map(self.execute, stmts))
 
     def __enter__(self):
         return self
@@ -46,20 +46,20 @@ class MySQLDatabase(Database):
         return stmts
 
     def _create_table(self, table_name, columns):
-        sql = (u'CREATE TABLE `%s`\n'
-               u'(\n'
+        sql = ('CREATE TABLE `%s`\n'
+               '(\n'
                % table_name)
-        for i in xrange(len(columns)):
-            sql += u'`%s` %s' % (columns[i][0], columns[i][1])
+        for i in range(len(columns)):
+            sql += '`%s` %s' % (columns[i][0], columns[i][1])
             if i != len(columns) - 1:
-                sql += u',\n'
+                sql += ',\n'
             else:
-                sql += u'\n'
-        sql += u');\n'
+                sql += '\n'
+        sql += ');\n'
         return sql
 
     def _drop_table(self, table_name):
-        return u'DROP TABLE `%s`;\n' % table_name
+        return 'DROP TABLE `%s`;\n' % table_name
 
 class Field(object):
     """The base field class
@@ -79,7 +79,7 @@ class Field(object):
     def __init__(self, column_name=None, default=None):
         self.value = default
         if column_name:
-            self.column_name = unicode(column_name)
+            self.column_name = str(column_name)
         else:
             raise Exception('No column name given')
 
@@ -92,15 +92,15 @@ class Field(object):
     def from_db(self, db, value):
         return value
 
-    def __unicode__(self):
-        return unicode(self.value)
+    def __str__(self):
+        return str(self.value)
 
     def create_columns(self, db):
         column_info = self.column_info[db.db_type]
         if isinstance(column_info, tuple):
             columns = []
             for (column_suffix, column_type) in column_info:
-                columns.append((self.column_name + u'_' + column_suffix,
+                columns.append((self.column_name + '_' + column_suffix,
                                 column_type))
         else:
             column_type = column_info
@@ -139,7 +139,7 @@ class Model(object):
         # ^^ def __init__(..., pk=None, ...):
         #if pk is not None:
             #db_values = self.objects.get(pk=pk)
-            #for fieldname, value in db_values.iteritems():
+            #for fieldname, value in db_values.items():
                 #getattr(self, fieldname).value = value
 
         for attrname in dir(self):
@@ -154,7 +154,7 @@ class Model(object):
 
     def __getattribute__(self, name):
         attr = super(Model, self).__getattribute__(name)
-        if name == '_fields' or name not in self._fields.iterkeys():
+        if name == '_fields' or name not in self._fields.keys():
             return attr
         else:
             return attr.value
@@ -177,7 +177,7 @@ class Model(object):
     def _create_table(cls, db):
         columns = []
         fields = cls._get_fields()
-        for field in fields.itervalues():
+        for field in fields.values():
             columns += field.create_columns(db)
 
         return db._create_table(cls._get_table_name(), columns)

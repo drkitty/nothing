@@ -1,7 +1,7 @@
 from itertools import chain
-from framework import MySQLDatabase
+from nothing.framework import MySQLDatabase
 
-from models import Human, Interface
+from example.models import Human, Interface
 
 
 MODELS = (
