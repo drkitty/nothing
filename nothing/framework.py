@@ -114,9 +114,6 @@ class Field(object):
 class Model(object):
     """The base model class
     Models are like tables.
-
-    Note: Attributes that are not Field instances should begin with an
-    underscore (because of reasons).
     """
 
     @classmethod

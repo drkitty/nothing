@@ -1,13 +1,13 @@
-from nothing.fields import VARCHAR, IPAddress
+from nothing.fields import StrippedVARCHAR, IPAddress
 from nothing.framework import Model
 
 
 class Human(Model):
     _table_name = 'human'
 
-    name = VARCHAR(10)
+    name = StrippedVARCHAR(10)
 
 
 class Interface(Model):
-    name = VARCHAR(255)
+    name = StrippedVARCHAR(255)
     ip = IPAddress()
