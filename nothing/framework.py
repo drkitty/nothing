@@ -126,7 +126,8 @@ class Model(object):
         for attrname in dir(cls):
             attr = getattr(cls, attrname)
             if (isinstance(attr, FunctionType) and
-                    attr.__name__ == '_create_field'):
+                    attr.__name__ == '_create_field' and
+                    attr.__module__ == 'nothing.framework'):
                 # Why is it a function now, when it used to be a staticmethod?
                 # Something to do with class instantiation.
                 fields[attrname] = attr(attrname)
