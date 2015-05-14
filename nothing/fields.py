@@ -32,7 +32,7 @@ class INT(_int_base):
 
 class BIGINT(_int_base):
     bits = 64
-    column_info = {'mysql': 'BITINT'}
+    column_info = {'mysql': 'BIGINT'}
 
 
 class VARCHAR(Field):
